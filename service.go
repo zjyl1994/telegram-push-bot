@@ -1,11 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
+
+	simplejson "github.com/bitly/go-simplejson"
 )
 
 func sendMessageToTelegram(chatID string, message string) error {
@@ -20,15 +24,18 @@ func sendMessageToTelegram(chatID string, message string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	var result map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	bJSON, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	if result["ok"].(bool) {
+	sJSON, err := simplejson.NewJson(bJSON)
+	if err != nil {
+		return err
+	}
+	if sJSON.Get("ok").MustBool() {
 		return nil
 	} else {
-		return errors.New(result["description"].(string))
+		return errors.New(sJSON.Get("description").MustString())
 	}
 }
 
@@ -39,14 +46,36 @@ func setTelegramWebhookPath(path string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	var result map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	bJSON, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	if result["ok"].(bool) {
+	sJSON, err := simplejson.NewJson(bJSON)
+	if err != nil {
+		return err
+	}
+	if sJSON.Get("ok").MustBool() {
 		return nil
 	} else {
-		return errors.New(result["description"].(string))
+		return errors.New(sJSON.Get("description").MustString())
 	}
+}
+
+func sendMessageURLGen(chatid string) string {
+	sign := stringSign(chatid, botToken)
+	return fmt.Sprintf("%s/send?chatid=%s&sign=%s", os.Getenv("TELEGRAM_PUSH_BOT_URL"), chatid, sign)
+}
+
+func telegramWebhookURLGen() string {
+	return fmt.Sprintf("%s/telegram/webhook", os.Getenv("TELEGRAM_PUSH_BOT_URL"))
+}
+
+func parseTelegramWebhook(data []byte) (chatid, text string, err error) {
+	sJSON, err := simplejson.NewJson(data)
+	if err != nil {
+		return "", "", err
+	}
+	chatid = strconv.FormatInt(sJSON.Get("message").Get("chat").Get("id").MustInt64(), 10)
+	text = sJSON.Get("message").Get("text").MustString()
+	return chatid, text, nil
 }
