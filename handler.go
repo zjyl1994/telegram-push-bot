@@ -32,7 +32,7 @@ func telegramWebhookHandler(w http.ResponseWriter, r *http.Request) {
 		case "url":
 			sendMessageToTelegram(chatid, sendMessageURLGen(chatid))
 		case "start":
-			message := "*OhMyPushBot*\nCommand:\n/ping: check bot alive\n/chatid: get chat_id for this chat\n/url: get url for send message"
+			message := "*OhMyPushBot*\nCommand:\n/ping: check bot alive\n/chatid: get chat\\_id for this chat\n/url: get url for send message"
 			sendMessageToTelegram(chatid, message)
 		default:
 			sendMessageToTelegram(chatid, "command not found")
